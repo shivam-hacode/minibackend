@@ -43,5 +43,5 @@ function startScheduler() {
 	scheduleJobOnQuarter(autoSubmitResult);
 }
 
-// ? EXPORT FIX (MOST IMPORTANT LINE)
 module.exports = startScheduler;
+module.exports.startScheduler = startScheduler;
