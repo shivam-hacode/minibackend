@@ -17,6 +17,7 @@ const Result2 = require("./src/models/ScrapperResultModel.js");
 
 // Redis
 const redis = require("./src/redisClient.js");
+const { invalidateAfterResultWrite } = require("./src/cacheInvalidate.js");
 
 // ?? Disable buffering
 mongoose.set("bufferCommands", false);
@@ -74,7 +75,12 @@ app.post("/api/upload-data", async (req, res) => {
       });
 
       await newDoc.save();
-      await redis.set(cacheKey, JSON.stringify(newDoc), { ex: 120 });
+      try {
+        await redis.set(cacheKey, JSON.stringify(newDoc), { ex: 120 });
+        await invalidateAfterResultWrite(categoryname, formattedDate);
+      } catch (redisErr) {
+        console.error("[redis] upload-data (create):", redisErr.message);
+      }
 
       return res.status(201).json({ message: "Created", data: newDoc });
     }
@@ -95,7 +101,12 @@ app.post("/api/upload-data", async (req, res) => {
     existingDoc.date = formattedDate;
 
     await existingDoc.save();
-    await redis.set(cacheKey, JSON.stringify(existingDoc), { ex: 120 });
+    try {
+      await redis.set(cacheKey, JSON.stringify(existingDoc), { ex: 120 });
+      await invalidateAfterResultWrite(categoryname, formattedDate);
+    } catch (redisErr) {
+      console.error("[redis] upload-data (update):", redisErr.message);
+    }
 
     return res.status(200).json({ message: "Updated", data: existingDoc });
 

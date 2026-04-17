@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const CategoryKeyModel = require('../models/KeyModel');
 const redis = require('../redisClient');
+const { invalidateAfterResultWrite } = require('../cacheInvalidate');
 const ResultsModel = require('../models/ResultModel');
 const Result = require('../models/ResultModel');
 const Result2 = require('../models/ScrapperResultModel');
@@ -119,9 +120,13 @@ const formattedNextTime = safeFormatTime(next_time);
     		});
     	}
 
-    	// Cache for 2 minutes
     	const cacheKey = `results:${categoryname}:${formattedDate}`;
-    	await redis.set(cacheKey, doc, { ex: 50 });
+    	try {
+    		await redis.set(cacheKey, doc, { ex: 50 });
+    		await invalidateAfterResultWrite(categoryname, formattedDate);
+    	} catch (redisErr) {
+    		console.error('[redis] CreateNewResult:', redisErr.message);
+    	}
 
     	return res.status(200).json({
     		message: 'Result saved successfully',
@@ -189,10 +194,18 @@ const currentYear = currentTime.year();
 
     	// ?? Check Redis cache first
     	const cachedData = await redis.get(cacheKey);
-    	if (cachedData) {
+    	if (cachedData != null && cachedData !== '') {
+    		let data = cachedData;
+    		if (typeof cachedData === 'string') {
+    			try {
+    				data = JSON.parse(cachedData);
+    			} catch {
+    				// leave as string
+    			}
+    		}
     		return res.status(200).json({
     			message: 'Results fetched successfully (from cache)',
-    			data: cachedData, // ?? Parse back to object
+    			data,
     		});
     	}
 
