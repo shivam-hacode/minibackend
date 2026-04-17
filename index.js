@@ -18,11 +18,6 @@ const Result2 = require("./src/models/ScrapperResultModel.js");
 // Redis
 const redis = require("./src/redisClient.js");
 
-// Scheduler: support both `module.exports = fn` and `module.exports = { startScheduler }`
-const _scheduler = require("./src/scheduler.js");
-const startScheduler =
-  typeof _scheduler === "function" ? _scheduler : _scheduler?.startScheduler;
-
 // ?? Disable buffering
 mongoose.set("bufferCommands", false);
 
@@ -121,14 +116,22 @@ const startApp = async () => {
 
     app.listen(5000, () => {
       console.log("Server running on port 5000 ??");
+      console.log("[backend] index.js build: scheduler-inline-v3");
 
       setTimeout(() => {
-        if (typeof startScheduler === "function") {
-          startScheduler();
-        } else {
-          console.error(
-            "Scheduler not loaded: fix src/scheduler.js export (expected function or { startScheduler })"
-          );
+        try {
+          const mod = require("./src/scheduler.js");
+          const run =
+            typeof mod === "function"
+              ? mod
+              : mod?.startScheduler ?? mod?.default;
+          if (typeof run !== "function") {
+            console.error("[scheduler] bad export from src/scheduler.js:", mod);
+            return;
+          }
+          run();
+        } catch (err) {
+          console.error("[scheduler] failed:", err);
         }
       }, 3000);
     });
