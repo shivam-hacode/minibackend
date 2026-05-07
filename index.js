@@ -8,6 +8,7 @@ const moment = require("moment");
 const router = require("./src/router/resultRoutes.js");
 const loginrouter = require("./src/router/authRouter.js");
 const appConfigRouterModule = require("./src/router/appConfigRouter.js");
+const uiEveningResultRoutes = require("./src/router/uiEveningResultRoutes.js");
 
 const appConfigRouter = appConfigRouterModule;
 const appConfigRootRouter = appConfigRouterModule.rootRouter;
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api", router);
 app.use("/api", loginrouter);
 app.use("/api", appConfigRouter);
+app.use("/api/ui-evening", uiEveningResultRoutes);
 app.use("/", appConfigRootRouter);
 
 // Test route
